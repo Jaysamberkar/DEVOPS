@@ -1,0 +1,214 @@
+TEERRAFORM 
+1) EC2 INSTANCE. 
+provider.tf 
+terraform{
+  required_providers {
+    aws ={
+      source = "hashicorp/aws"
+      version="4.33.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-east-1"
+  access_key = ""
+  secret_key = ""
+}
+---
+Now create a user from iam dashboard, then create cli access keys.
+ 
+
+2)S3 BUCKET 
+provider.tf 
+terraform{
+  required_providers {
+    aws ={
+      source = "hashicorp/aws"
+      version="4.33.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-east-1"
+  access_key = ""
+  secret_key = ""
+}
+
+---
+main.tf 
+resource "aws_s3_bucket" "b"{
+  bucket = "my-tf-test-bucket2105"
+  tags ={
+    Name = "My bucket"
+    Environment = "Dev"
+  }
+}
+
+---
+terraform init 
+terraform plan 
+terraform apply 
+terraform destroy 
+
+HOST WEB APPLICATION 
+
+main.tf
+terraform{
+  required_providers {
+    aws ={
+      source = "hashicorp/aws"
+      version="4.33.0"
+    }
+  }
+}
+
+
+provider "aws" {
+  region = "var.aws_region"
+  access_key = "AKIAZMEUZUBTEADJTXOE"
+  secret_key = "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"
+}
+
+resource "aws_s3_bucket" "hosting_bucket"{
+  bucket = var.bucket_name 
+}
+
+variable.tf
+variable "aws_region"{
+  description = "aws region"
+  type = ""
+}
+
+variable "bucket_name" {
+  description = "Name of the bucket "
+  type = string
+}
+
+terraform.tfvars
+aws_region = "us-east-1"
+bucket_name = "cp-web-hosting-bucket"
+
+>now terraform init
+terraform plan 
+terraform apply 
+
+--
+main.tf
+
+resource "aws_s3_bucket_acl" "hosting_bucket_acl"{
+  bucket = aws_s3_bucket.hosting_bucket.id
+  acl = "public_read"
+}
+
+resource "aws_s3_bucket_policy" "hosting_bucket_policy"{
+  bucket = aws_s3_bucket.hosting_bucket.id 
+
+  policy = jsonencode({
+    "version": "2012-10-17"
+    "statement": [
+      "Effect": "Allow",
+      "principal": "*",
+      "Action": "s3.GetObject",
+      "Resource" : "arn:aws:s3:::${var.bucket_name}/*"
+    ]
+  })
+}
+
+resource "aws_s3_bucket_website_configuration" "hosting_bucket_website_configuration" {
+  bucket = aws-s3_bucket.hosting_bucket.id
+
+  index_document {
+    suffix = "index.html"
+  }
+}
+
+--
+create a folder web
+after this create a html file "index.html" and other project files 
+
+---
+main.tf 
+
+module "template_files" {
+  source = "hashicorp/dir/template"
+
+  base_dir = "${path.module}/web"
+}
+
+resource "aws_s3_object" "hosting_bucket_files" {
+  bucket = aws_s3_bucket.hosting_bucket.id
+
+  for_each = module.template_files.files 
+
+  key = each.key
+  content_type = each.value.content_type
+
+  source = each.value.source_path
+  content = each.value.content 
+
+  etag = each.value.digest.md5 
+}
+
+---
+terraform plan 
+terraform init 
+terraform plan 
+---
+output.tf 
+output "website_url"{
+description = "URL of the website "
+value = aws_s3_bucket_website_configuration.hosting_bucket_website_configuration.website_endpoint
+}
+
+---
+terraform apply  
+
+
+S3 BUCKET- LOGS IMAGE ADDED 
+1) create s3 bucket. 
+2) click on upload button and add any .py file 
+3) searchlambda
+4) create function -> use a blueprint -> Blueprints ->s3-get-object-python.
+5) give function name -> execution role -> create a new role from AWS policy templates 
+6) select on bucket created -> create trigger -> give bucket name -> event type -> all object create eventsz
+7) check trigger is created 
+8) click on orange test button. -> lambda_fuction.py 
+9) cloudwatch -> check logs ->image has been added. 
+done. 
+
+---
+lambda code 
+
+import boto3
+import json
+
+dynamodb_client = boto3.resource('dynamodb')
+table = dynamodb_client.Table('darshiltable1')
+
+def lambda_handler(event,context):
+    try:
+        response = table.put_item(Item=event)
+        return table.scan()
+    except:
+        raise
+-----
+EC2 
+
+Iam user banao, security group 
+
+provider "aws" {
+access_key=""
+secret_key=""
+region="ap-south-1"
+
+}
+
+resource "aws_instance" "Ubuntu" {
+ami=""
+instance_type="t2.micro"
+}
+
+
+
